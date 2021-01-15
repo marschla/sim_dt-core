@@ -1,0 +1,25 @@
+<launch>
+
+	<arg name="veh" default="$(env VEHICLE_NAME)"/>
+	 <arg name="demo_name" value="Test"/>
+
+	<include file="$(find duckietown_demos)/launch/master.launch">
+
+		<arg name="veh" value="$(arg veh)"/>
+        	<arg name="demo_name" value="$(arg demo_name)"/>
+		<arg name="param_file_name" value="default" />
+		<arg name="visualization" value="false" />
+		<arg name="anti_instagram" value="true" />
+
+		<arg name="lane_following" value="true"/>
+	    	<arg name="/lane_following/line_detection" value="true"/>
+	    	<arg name="line_detector_param_file_name" value="default" />
+	    	<arg name="/lane_following/ground_projection" value="true"/>
+	    	<arg name="/lane_following/lane_filter" value="false"/>
+	    	<arg name="/lane_following/lane_controller" value="false"/>
+
+	</include>
+
+  	<node pkg="my_package" type="parallelPID.py" name="parallel_PID_Controller" output="screen"/>
+  
+</launch>

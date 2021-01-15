@@ -24,7 +24,9 @@ sleep 5
 #dt-exec roslaunch my_package nodeCascadePID_2T.launch
 #dt-exec roslaunch my_package nodeStateFeedback.launch
 #dt-exec roslaunch my_package nodeStanley.launch
-dt-exec roslaunch my_package nodeLQR.launch
+#dt-exec roslaunch my_package nodeLQR.launch
+#dt-exec roslaunch my_package nodeparallelPID.launch
+dt-exec roslaunch my_package nodeGotoAngle.launch
 
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE

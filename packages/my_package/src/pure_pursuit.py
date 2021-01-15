@@ -151,7 +151,7 @@ class ControllerNode(DTROS):
             ave_point = ave_yellow + np.array([0.0,offset])
 
 
-            self.vref = 0.2
+            self.vref = 0.20
 
         if num_yellow == 0 and num_white != 0:
             #only white segments (probably too far to the right of the lane)
@@ -165,7 +165,7 @@ class ControllerNode(DTROS):
                 
             ave_point = ave_white + np.array([0.0,offset])
 
-            self.vref = 0.2
+            self.vref = 0.20
 
 
         #rospy.loginfo("Flag: %s" % flag)
