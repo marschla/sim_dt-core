@@ -19,11 +19,11 @@ sleep 5
 # launching app
 #dt-exec roslaunch my_package nodePurePursuit.launch
 #dt-exec roslaunch my_package nodeTest.launch
-dt-exec roslaunch my_package nodePID.launch
+#dt-exec roslaunch my_package nodePID.launch
 #dt-exec roslaunch my_package nodeCascadePID.launch
 #dt-exec roslaunch my_package nodeCascadePID_2T.launch
 #dt-exec roslaunch my_package nodeStateFeedback.launch
-#dt-exec roslaunch my_package nodeStanley.launch
+dt-exec roslaunch my_package nodeStanley.launch
 #dt-exec roslaunch my_package nodeLQR.launch
 #dt-exec roslaunch my_package nodeparallelPID.launch
 #dt-exec roslaunch my_package nodeGotoAngle.launch

@@ -24,8 +24,8 @@ class MyPublisherNode(DTROS):
     def callback(self,msg,source):
         #introduces some error into lanepose to mimic uncertainty in state estimation
         random.seed()
-        offset_d = (random.rand() - 0.5)/50.0*float(self.scalefactor)
-        offset_phi = (random.rand()-0.5)/3.0*float(self.scalefactor)
+        offset_d = (random.rand() - 0.5)/50.0*float(self.scalefactor)  #maxoffset = 0.1*factor
+        offset_phi = (random.rand()-0.5)/2.86*float(self.scalefactor)  #maxoffset = 10°*factor
 
         pose_msg = LanePose()
         pose_msg.header = msg.header

@@ -15,10 +15,10 @@ class MyNode(DTROS):
         # initialize the DTROS parent class
         super(MyNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
         # construct publisher
-        self.pub_wheels_cmd = rospy.Publisher("fakebot/wheels_driver_node/wheels_cmd", WheelsCmdStamped, queue_size=1)
+        self.pub_wheels_cmd = rospy.Publisher("~cmd", WheelsCmdStamped, queue_size=1)
         #self.pub_omega = self.publisher(str(os.environ['VEHICLE_NAME'])+"/kinematics_node/velocity", Twist2DStamped, queue_size=1)
         #subscriber
-        self.sub_pose = rospy.Subscriber("fakebot/sim_node/lane_pose", LanePose, self.control, queue_size=1)
+        self.sub_pose = rospy.Subscriber("~pose", LanePose, self.control, queue_size=1)
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
         #def. variables

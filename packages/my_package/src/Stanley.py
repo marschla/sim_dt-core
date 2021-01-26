@@ -15,10 +15,10 @@ class ControllerNode(DTROS):
         super(ControllerNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
 
         #Publisher
-        self.pub_car_cmd = rospy.Publisher("fakebot/wheels_driver_node/wheels_cmd", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
+        self.pub_car_cmd = rospy.Publisher("~cmd", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
 
         #Subscriber
-        self.sub_lane_reading = rospy.Subscriber("fakebot/sim_node/lane_pose", LanePose, self.control, "lane_filter", queue_size=1)
+        self.sub_lane_reading = rospy.Subscriber("~pose", LanePose, self.control, "lane_filter", queue_size=1)
         
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
