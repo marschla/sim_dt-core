@@ -37,7 +37,7 @@ class ControllerNode(DTROS):
 
     def getomega(self,dist,phi,dt):
         #parameters for PID control
-        omegasat = 10.0
+        omegasat = 100.0
         k_d = 10.0
         k_phi = 5.0
         

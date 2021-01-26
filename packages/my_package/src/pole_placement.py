@@ -45,7 +45,7 @@ class MyNode(DTROS):
             omegamax = 10.0
             sati = 1.0
 
-            '''
+            
             #without integral state
             #state feedback: statevector x = [d;phi]
             #K places poles at -1 and -2   (in continuous time)
@@ -55,12 +55,12 @@ class MyNode(DTROS):
 
             # u = -K*x
             self.omega = -k1*self.dist - k2*self.phi
-            '''
+            
             
             #with integral state
             #state feedback: statevector = [d;phi;dint]
             #current best K = [7.0 -3.25 1.1]
-
+            '''
             self.dint += dt*self.dist
 
             if self.dint > sati:
@@ -73,7 +73,7 @@ class MyNode(DTROS):
             k3 = 1.1
 
             self.omega = -k1*self.dist - k2*self.phi - k3*self.dint
-            
+            '''
 
             if self.omega > omegamax:
                 self.omega = omegamax
@@ -92,12 +92,12 @@ class MyNode(DTROS):
             message1 = self.dist*k1
             message2 = self.omega
             message3 = self.phi*k2
-            message4 = self.dint*k3
+            #message4 = self.dint*k3
 
 
             rospy.loginfo('d: %s' % message1)
             rospy.loginfo('phi: %s' % message3)
-            rospy.loginfo('dint: %s' % message4)
+            #rospy.loginfo('dint: %s' % message4)
             rospy.loginfo('omega: %s' % message2)
             rate.sleep()
 

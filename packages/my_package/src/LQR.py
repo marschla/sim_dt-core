@@ -80,7 +80,6 @@ class MyNode(DTROS):
             #self.omega = -k1*self.dist - k2*self.phi
             self.omega  = -k1*self.dist - k2*self.phi -k3*self.dint
 
-            self.omega = self.omega
 
             #def. motor commands that will be published
             car_cmd_msg.header.stamp = rospy.get_rostime()

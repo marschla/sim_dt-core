@@ -53,7 +53,7 @@ class ControllerNode(DTROS):
         k_d = 0.0
         sati = 1.0
         satd = 1.0
-        omegasat = 4.5
+        omegasat = 100.0
     
         err = self.phiest-phiref
 

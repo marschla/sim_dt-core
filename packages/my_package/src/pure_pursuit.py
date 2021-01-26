@@ -99,7 +99,7 @@ class ControllerNode(DTROS):
                 num_white_total += 1
                 white_arr_total += np.array([ave_point_x,ave_point_y])
 
-                if d < lookahead + tol and d > lookahead - tol:
+                if d < lookahead + tol and d > lookahead - tol: #and ave_point_y > -0.1:
                     num_white += 1
                     white_arr += np.array([ave_point_x,ave_point_y])
 
@@ -110,6 +110,11 @@ class ControllerNode(DTROS):
             ave_point = (ave_white + ave_yellow)/2.0
 
             self.vref = 0.23
+
+            if np.abs(ave_point[1]) < 0.025:
+                self.vref = 0.4
+                rospy.logwarn("speed")
+            
 
 
         if num_white == 0 and num_yellow == 0:
