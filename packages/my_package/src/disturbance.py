@@ -27,6 +27,8 @@ class MyPublisherNode(DTROS):
         offset_d = (random.rand() - 0.5)/50.0*float(self.scalefactor)  #maxoffset = 0.1*factor
         offset_phi = (random.rand()-0.5)/2.86*float(self.scalefactor)  #maxoffset = 10°*factor
 
+        #rospy.loginfo("offset = %s" % [offset_d,offset_phi])
+
         pose_msg = LanePose()
         pose_msg.header = msg.header
         pose_msg.d = msg.d + offset_d

@@ -27,7 +27,7 @@ class ControllerNode(DTROS):
 
         #sys params
         self.vdiff = 0.0
-        self.omega = 0.0
+        self.omega_old = 0.0
         self.vref = 0.23    #v_ref defines speed at which the robot moves 
         self.dist = 0.0
         self.dold = 0.0
@@ -51,18 +51,33 @@ class ControllerNode(DTROS):
             self.C_i = 0
             rospy.loginfo("Reset Integral")
 
+    def drivetocenter(self,d,phi):
+        if d<0 and phi>0:
+            return True
+        elif d>0 and phi<0:
+            return True
+        else:
+            return False
+
+    def computespeed(self,d):
+        speedfactor = 2.0
+        return speedfactor*np.abs(d)
+
     def getomega(self,dist,tist,dt):
         #parameters for PID control
-        k_p = 4.0
-        k_i = 0.1
+        k_p = 33.0
+        k_i = 5.0
         k_d = 0.0
         #saturation params
         sati = 1.0
         satd = 1.0
         omegasat=4.5
+
+        weight_d = 0.8
+        weight_phi = 0.2
         
 
-        err = 6*dist+1.5*tist
+        err = weight_d*dist+weight_phi*tist
 
         #proportional gain part
         self.C_p = k_p*err
@@ -97,8 +112,20 @@ class ControllerNode(DTROS):
             omega=omegasat
         if omega<-omegasat:
             omega=-omegasat
+
+        vref = 0.23
+        '''
+        if np.abs(omega) < 0.05 and np.abs(self.omega_old) < 0.05:
+            v = 0.3
+        elif self.drivetocenter(dist,tist):
+            v = vref + self.computespeed(dist)
+        else:
+            v = vref - self.computespeed(dist)
         
-        return omega
+        self.omega_old = omega
+        '''
+        v = vref
+        return v,omega
 
     def run(self):
         # publish message every 1/x second
@@ -127,20 +154,20 @@ class ControllerNode(DTROS):
             
 
             #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
-            self.omega = self.getomega(self.dist,self.tist,dt)
+            v,omega = self.getomega(self.dist,self.tist,dt)
 
             #car_cmd_msg.omega = self.omega
             #car_cmd_msg.v = self.vref
             #car_cmd_msg.header = self.header
 
-            if np.abs(self.omega) >= 5.0:
+            if np.abs(omega) >= 4.5:
                 rospy.logwarn("Max Omega reached")
 
             #def. motor commands that will be published
             
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = self.vref - self.L * self.omega
-            car_cmd_msg.vel_right = self.vref + self.L * self.omega
+            car_cmd_msg.vel_left = v - self.L * omega
+            car_cmd_msg.vel_right = v + self.L * omega
             '''
             car_cmd_msg.omega = 0#self.omega
             car_cmd_msg.v = 0.3#self.vref
@@ -151,14 +178,14 @@ class ControllerNode(DTROS):
             #printing messages to verify that program is working correctly 
             #i.ei if dist and tist are always zero, then there is probably no data from the lan_pose
             message1 = self.dist
-            message2 = self.omega
+            message2 = omega
             message3 = self.tist
-            message4 = dt
+            message4 = v
 
             #rospy.loginfo('d: %s' % message1)
             rospy.loginfo('omega: %s' % message2)
             #rospy.loginfo('phi: %s' % message3)
-            #rospy.loginfo('dt: %s' % message4)
+            rospy.loginfo('v: %s' % message4)
             #rospy.loginfo("time: %s" % message5)
             
             rate.sleep()

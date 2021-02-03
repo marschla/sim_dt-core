@@ -57,7 +57,7 @@ class ControllerNode(DTROS):
         #saturation params
         sati = 1.0
         satd = 1.0
-        omegasat=100.0
+        omegasat=5.0
         
         err = phi
 
@@ -86,9 +86,9 @@ class ControllerNode(DTROS):
         if omega<-omegasat:
             omega=-omegasat
 
-        vref = 0.23
+        vref = 0.25
 
-        v = np.sqrt(1.0-2*np.abs(dist)+2*dist**2)
+        v = np.sqrt(1.0-2*np.abs(dist)+2*(dist)**2)*vref
         
         return v,omega
 
