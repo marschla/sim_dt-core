@@ -32,7 +32,7 @@ class ControllerNode(DTROS):
         self.vref = 0.23    #v_ref defines speed at which the robot moves 
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.dold = 0.0     #stores error from previous timestep for derivative term
-        self.tist = 0.0     #class variable to store current estimate of heading
+        self.phi = 0.0     #class variable to store current estimate of heading
 
         #params used for PID control 
         self.C_i = 0.0      #class variable, to store integralstate
@@ -165,7 +165,7 @@ class ControllerNode(DTROS):
                 self.custom_shutdown()
             '''
             
-            v,omega = self.getcontrolaction(self.dist,self.tist,dt)
+            v,omega = self.getcontrolaction(self.dist,self.phi,dt)
 
             #car_cmd_msg.omega = self.omega
             #car_cmd_msg.v = self.vref
@@ -186,7 +186,7 @@ class ControllerNode(DTROS):
             #i.ei if dist and tist are always zero, then there is probably no data from the lan_pose
             message1 = self.dist
             message2 = omega
-            message3 = self.tist
+            message3 = self.phi
             message4 = v
 
             #rospy.loginfo('d: %s' % message1)
@@ -213,7 +213,7 @@ class ControllerNode(DTROS):
     def control(self,pose, source):
         self.header = pose.header
         self.dist = pose.d 
-        self.tist = pose.phi 
+        self.phi = pose.phi 
 
         #delay = rospy.Time.now() - pose.header.stamp
         #delay_float = delay.secs + float(delay.nsecs)/1e9    
