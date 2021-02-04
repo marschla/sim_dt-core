@@ -15,39 +15,44 @@ class ControllerNode(DTROS):
         super(ControllerNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
 
         #Publisher
+        #Publishes actuator commands to node handling the wheel commands
         self.pub_car_cmd = rospy.Publisher("~cmd", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
 
         #Subscriber
+        #Subscribes to the node publishing the LanePose estimation
         self.sub_lane_reading = rospy.Subscriber("~pose", LanePose, self.control, "lane_filter", queue_size=1)
         
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
 
         #sys params
-        self.omega = 0.0
-        self.dist = 0.0
-        self.phi = 0.0
-        self.baseline = 0.05
+        self.dist = 0.0     #class variable to store distance do lanecenter
+        self.phi = 0.0      #class variable to store last estimate of phi from lanefilter
+        self.baseline = 0.1     #distance between the two wheels
 
         self.stamp = 0
         self.header = 0
 
+    #using LanePose estimation, this function computes controlaction
     def getomega(self,dist,phi):
         #tuning parameters
-        L = 0.05
-        lookahead = 0.15
-        vref  = 0.23
+        L = 0.05            #offset param, at which point ahead of A the LanePose is applied to
+        lookahead = 0.15    #lookahead distance to obtain phiref
+        vref  = 0.23        
         omegasat = 5.0
         phirefsat = np.pi/3
-        tol = 0.00
+        tol = 0.00          #tolerance param, of DB is closer to the centerline as the tolerance, omega as automatically set to zero
         
+        #computing phiref according to theory
         phiref = np.arctan2(dist,lookahead)
 
+        #saturation for phiref
         if phiref > phirefsat:
             phiref = phirefsat
         if phiref < -phirefsat:
             phiref = -phirefsat
 
+        #This part sets omega to zero, if DB is in a certain bound close to the centerline
         if np.abs(dist) > tol:
             omega = vref / L * np.sin(phiref - phi)
             v = vref * np.cos(phiref - phi)
@@ -57,6 +62,7 @@ class ControllerNode(DTROS):
 
         rospy.loginfo("phiref = %s" % phiref)
         
+        #saturation of omega -> making sure it does not become too big
         if omega>omegasat:
             omega=omegasat
         if omega<-omegasat:
@@ -72,13 +78,13 @@ class ControllerNode(DTROS):
         
         while  not rospy.is_shutdown():
 
-            #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
+            #compute control action
             v,omega = self.getomega(-self.dist,self.phi)
 
             #def. motor commands that will be published
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = v + self.baseline * omega
-            car_cmd_msg.vel_right = v - self.baseline * omega
+            car_cmd_msg.vel_left = v + 0.5*self.baseline * omega
+            car_cmd_msg.vel_right = v - 0.5*self.baseline * omega
 
             self.pub_car_cmd.publish(car_cmd_msg)
 

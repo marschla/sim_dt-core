@@ -15,10 +15,12 @@ class ControllerNode(DTROS):
         super(ControllerNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
 
         #Publisher
+        #Publishes actuator commands to node handling the wheel commands
         self.pub_car_cmd = rospy.Publisher("~cmd", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
         #self.pub_car_cmd = rospy.Publisher("fakebot/car_cmd_switch_node/cmd", Twist2DStamped, queue_size=1, dt_topic_type=TopicType.CONTROL)
 
         #Subscriber
+        #Subscribes to the node publishing the LanePose estimation
         self.sub_lane_reading = rospy.Subscriber("~pose", LanePose, self.control, "lane_filter", queue_size=1)
         #self.sub_lane_reading = rospy.Subscriber("fakebot/lane_filter_node/lane_pose", LanePose, self.control, "lane_filter", queue_size=1)
 
@@ -26,23 +28,21 @@ class ControllerNode(DTROS):
         rospy.on_shutdown(self.custom_shutdown)
 
         #sys params
-        self.vdiff = 0.0
         self.omega_old = 0.0
         self.vref = 0.23    #v_ref defines speed at which the robot moves 
-        self.dist = 0.0
-        self.dold = 0.0
-        self.tist = 0.0
+        self.dist = 0.0     #class variable to store distance do lanecenter
+        self.dold = 0.0     #stores error from previous timestep for derivative term
+        self.tist = 0.0     #class variable to store current estimate of heading
 
         #params used for PID control 
-        self.C_p = 0.0
-        self.C_i = 0.0
-        self.C_d = 0.0
+        self.C_i = 0.0      #class variable, to store integralstate
 
-        self.L = 0.05
+        self.baseline = 0.1     #distance between the two wheels
 
         self.stamp = 0
         self.header = 0
 
+    #function to reset Integralstate, if robot is thought to be perfectly in Lane (d=phi=0)
     def resetintegral(self,d,phi):
         tol_d = 0.05
         tol_phi = 0.1
@@ -51,6 +51,7 @@ class ControllerNode(DTROS):
             self.C_i = 0
             rospy.loginfo("Reset Integral")
 
+    #returns true, if robot moves towards lanecenter and False otherwise
     def drivetocenter(self,d,phi):
         if d<0 and phi>0:
             return True
@@ -59,11 +60,13 @@ class ControllerNode(DTROS):
         else:
             return False
 
+    #compute velocityboost based on distance to lanecenter
     def computespeed(self,d):
         speedfactor = 2.0
         return speedfactor*np.abs(d)
 
-    def getomega(self,dist,tist,dt):
+    #compute controlaction based on lanepose estimate
+    def getcontrolaction(self,dist,phi,dt):
         #parameters for PID control
         k_p = 33.0
         k_i = 5.0
@@ -73,46 +76,57 @@ class ControllerNode(DTROS):
         satd = 1.0
         omegasat=4.5
 
+        #weighting parameters should chosen such that weight_d + weight_phi = 1
+        #and weight_d/weight_phi < pi/(2*d_max), where d_max should approx be the lanewidth*safetycoefficient (i.e. 1.2*lanewidth)
         weight_d = 0.8
         weight_phi = 0.2
         
-
-        err = weight_d*dist+weight_phi*tist
+        #compute error for PID
+        err = weight_d*dist+weight_phi*phi
 
         #proportional gain part
-        self.C_p = k_p*err
+        C_p = k_p*err
 
         #integral term (approximate integral)
         self.C_i += k_i*dt*err
 
+        #activate if integralreset is desired:
+        #sets integralterm C_i to zero if d and theta are zero, thus the DB is driving perfectly in lane
         #self.resetintegral(dist,tist)
 
-        
+        #integral saturation
         #make sure integral term doesnt become too big
         if self.C_i > sati:
             self.C_i = sati 
         if self.C_i < -sati:
             self.C_i = -sati 
         
-        #derivative term
-        self.C_d = k_d*(err-self.dold)/dt
+        #derivative term (usually not used, because noise makes it rather unstable)
+        C_d = k_d*(err-self.dold)/dt
         self.dold = err
         
+        #derivative saturation
         #make sure derivative term doesnt become too big
-        if self.C_d > satd:
-            self.C_d = satd
-        if self.C_d < -satd:
-            self.C_d = -satd
+        if C_d > satd:
+            C_d = satd
+        if C_d < -satd:
+            C_d = -satd
         
         #computing control output
-        omega = self.C_p + self.C_i + self.C_d
+        omega = C_p + self.C_i + C_d
         
-        
+        #output saturation 
+        #making sure, that too large of actuator output is requested, 
+        #since a) the real life motors cannot achieve any arbitrary speed 
+        #and b) too big of omega could make the robot crash, since there is a delay in the measurements
         if omega>omegasat:
             omega=omegasat
         if omega<-omegasat:
             omega=-omegasat
 
+        #uncomment the following part to allow change in velocity based on distance to lane center  and
+        #heading direction (heading towards lane center -> drive faster, heading away -> drive slower)
+        #if robot is almost perfectly in lane -> drive faster 
         vref = 0.23
         '''
         if np.abs(omega) < 0.05 and np.abs(self.omega_old) < 0.05:
@@ -150,29 +164,22 @@ class ControllerNode(DTROS):
                 rospy.signal_shutdown("Ende gut, alles gut")
                 self.custom_shutdown()
             '''
-            #rospy.loginfo("Hallo")
             
-
-            #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
-            v,omega = self.getomega(self.dist,self.tist,dt)
+            v,omega = self.getcontrolaction(self.dist,self.tist,dt)
 
             #car_cmd_msg.omega = self.omega
             #car_cmd_msg.v = self.vref
             #car_cmd_msg.header = self.header
 
+            #console output, if requested actuatoroutput saturates
             if np.abs(omega) >= 4.5:
                 rospy.logwarn("Max Omega reached")
 
             #def. motor commands that will be published
-            
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = v - self.L * omega
-            car_cmd_msg.vel_right = v + self.L * omega
-            '''
-            car_cmd_msg.omega = 0#self.omega
-            car_cmd_msg.v = 0.3#self.vref
-            car_cmd_msg.header.stamp = rospy.Time.now()
-            '''
+            car_cmd_msg.vel_left = v - 0.5*self.baseline * omega
+            car_cmd_msg.vel_right = v + 0.5*self.baseline * omega
+            #publish actuator output to wheels_driver_node
             self.pub_car_cmd.publish(car_cmd_msg)
 
             #printing messages to verify that program is working correctly 

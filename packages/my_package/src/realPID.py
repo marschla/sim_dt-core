@@ -24,23 +24,20 @@ class ControllerNode(DTROS):
         rospy.on_shutdown(self.custom_shutdown)
 
         #sys params
-        self.vdiff = 0.0
-        self.omega = 0.0
         self.vref = 0.23    #v_ref defines speed at which the robot moves 
-        self.dist = 0.0
-        self.dold = 0.0
-        self.tist = 0.0
+        self.dist = 0.0     #class variable to store distance do lanecenter
+        self.phi = 0.0      #class variable to store current estimate of heading
 
         #params used for PID control 
-        self.C_p = 0.0
-        self.C_i = 0.0
-        self.C_d = 0.0
+        self.C_i = 0.0       #variable to keep track of integral state
 
-        self.L = 0.05
+        #structural paramters of duckiebot
+        self.baseline = 0.1     #distance between the two wheels
 
         self.stamp = 0
         self.header = 0
 
+    #function to reset Integral term, if robot is driving perfectly in lane (+- some tolerance)
     def resetintegral(self,d,phi):
         tol_d = 0.05
         tol_phi = 0.1
@@ -49,26 +46,26 @@ class ControllerNode(DTROS):
             self.C_i = 0
             rospy.loginfo("Reset Integral")
 
+    #Using the Laneposeestimation, this function computes controlaction
     def getomega(self,dist,phi,dt):
         #parameters for PID control
         k_p = 5.0
         k_i = 0.75
-        k_d = 0.0
         #saturation params
         sati = 1.0
-        satd = 1.0
         omegasat=5.0
         
+        #defining error term for PID contrller
         err = phi
 
         #proportional gain part
-        self.C_p = k_p*err
+        C_p = k_p*err
 
         #integral term (approximate integral)
         self.C_i += k_i*dt*err
 
+        #uncomment, if integral reset should be allowed
         #self.resetintegral(dist,tist)
-
         
         #make sure integral term doesnt become too big
         if self.C_i > sati:
@@ -78,16 +75,18 @@ class ControllerNode(DTROS):
         
         
         #computing control output
-        omega = self.C_p + self.C_i + self.C_d
+        omega = C_p + self.C_i 
         
-        
+        #saturation of omega -> making sure it does not become too big
         if omega>omegasat:
             omega=omegasat
         if omega<-omegasat:
             omega=-omegasat
 
+        #basevelocity, with respect to which ooutput velocity will be computed
         vref = 0.25
 
+        #computed velocity
         v = np.sqrt(1.0-2*np.abs(dist)+2*(dist)**2)*vref
         
         return v,omega
@@ -106,31 +105,22 @@ class ControllerNode(DTROS):
             told = tnew
             tnew = time.time()
             dt = tnew-told
-            
-            '''
-            #stop programm once a certain time has passed (for experiments, not meant for normal usage)
-            if tnew-t0>stoptime:
-                rospy.logwarn("Time's up!!!")
-                rospy.signal_shutdown("Ende gut, alles gut")
-                self.custom_shutdown()
-            '''
-            #rospy.loginfo("Hallo")
-            
 
-            #self.vdiff = self.getvdiff(self.dist,self.tist,dt)
-            v,omega = self.getomega(self.dist,self.tist,dt)
+            #call function to compute controlaction
+            v,omega = self.getomega(self.dist,self.phi,dt)
 
             #car_cmd_msg.omega = self.omega
             #car_cmd_msg.v = self.vref
             #car_cmd_msg.header = self.header
 
-            if np.abs(self.omega) >= 5.0:
+            #print warning, if controloutput reaches satureation
+            if np.abs(omega) >= 5.0:
                 rospy.logwarn("Max Omega reached")
 
             #def. motor commands that will be published
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = v - self.L * omega
-            car_cmd_msg.vel_right = v + self.L * omega
+            car_cmd_msg.vel_left = v - 0.5*self.baseline * omega
+            car_cmd_msg.vel_right = v + 0.5*self.baseline * omega
 
             self.pub_car_cmd.publish(car_cmd_msg)
 
@@ -165,10 +155,8 @@ class ControllerNode(DTROS):
     def control(self,pose, source):
         self.header = pose.header
         self.dist = pose.d
-        self.tist = pose.phi
-        #delay = rospy.Time.now() - pose.header.stamp
-        #delay_float = delay.secs + float(delay.nsecs)/1e9    
-        #rospy.loginfo('delay [s] =  %s' % delay_float)       
+        self.phi = pose.phi
+     
 
 if __name__ == "__main__":
     # Initialize the node

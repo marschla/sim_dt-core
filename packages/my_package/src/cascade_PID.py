@@ -14,78 +14,80 @@ class ControllerNode(DTROS):
         # initialize the DTROS parent class
         super(ControllerNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
 
-        # construct publisher
+        # Publisher
+        #Publishes actuator commands to node handling the wheel commands
         self.pub_wheels_cmd = rospy.Publisher("~cmd", WheelsCmdStamped, queue_size=1,dt_topic_type=TopicType.CONTROL)
         #self.pub_omega = self.publisher(str(os.environ['VEHICLE_NAME'])+"/kinematics_node/velocity", Twist2DStamped, queue_size=1)
         
-        #subscriber
+        # Subscriber
+        #Subscribes to the node publishing the LanePose estimation
         self.sub_pose = rospy.Subscriber("~pose", LanePose, self.control, "lane_filter", queue_size=1)
         
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
         
         #def. variables
-        self.vdiff = 0.0
-        self.omega = 0.0
         self.vref = 0.23    #v_ref defines speed at which the robot moves 
-        self.dist = 0.0
-        self.dold = 0.0
-        self.phiist = 0.0
-        #self.phiref = 0.0
-        self.phiest = 0.0
-        self.C_i = 0
-
-        self.mtime = 0.0
-        self.mtimeold = 0.0
-
-        self.time_arr = []
+        self.dist = 0.0     #class variable to store distance do lanecenter
+        self.phiist = 0.0   #class variable to store last estimate of phi from lanefilter
+        self.phiest = 0.0   #class variable to store current estimate of heading
+        self.C_i = 0        #variable to keep track of integral state
 
         #structural paramters of duckiebot
-        self.L = 0.05      #length from point A to wheels [m]
+        self.baseline = 0.1      #distance between the two wheels
 
 
     #control alg. for inner loop
-    def getomega(self,phiref,phiist,dt):
+    #Using the angular offset and computed referene angle, this function returns the control action (ie omega)
+    def getomega(self,phiref,dt):
 
         #PID params for inner loop
         k_p = 3.8
         k_i = 0.1
-        k_d = 0.0
+        k_d = 0.0  #because of input noise, k_d should be kept at zero
         sati = 1.0
         satd = 1.0
         omegasat = 100.0
-    
+
+        #errror term for inner loop
         err = self.phiest-phiref
-
+        #proportional term
         C_p = k_p*err
-
+        #integral term
         self.C_i += k_i*dt*err
-
+        #control action
         omega = C_p + self.C_i
 
+        #saturation of omega -> making sure it does not become too big
         if omega>omegasat:
             omega=omegasat
         if omega<-omegasat:
             omega=-omegasat
 
+        #Since our innerloop should have a higher freq then the data comming in from LanePose estimation
+        #we update the heading measurement
         self.phiest += omega*dt
 
         return omega
 
+    #outer loop
+    #using lateral offset, this function returns reference heading for inner loop
     def getphiref(self,dist):
 
         #PID params for outer loop
         k_p = 3.0
         k_i = 0.25
+        #because of noise derivative term should be zero
         k_d = 0.0
         sat = np.pi/4.0
 
-        #correct sign for controller, (offset because DB drove too far on the right)
+        #correct sign for controller, because of sign conventions
         err = -dist
 
         phiref = k_p*err
 
         #saturation, currently at pi/2 (needs testing if bigger angles needed (especially in tight turns))
+        #because too low saturation can lead to too slow reaction to Turns
         if phiref>sat:
             phiref=sat
         if phiref<-sat:
@@ -107,21 +109,25 @@ class ControllerNode(DTROS):
             tnew = time.time()
             dt = tnew-told
 
+            #running controller functions for inner and outer loop
+            #Note: here both functions run at the same frequency, but since d is only updated once a new Poseestimation
+            #is received the output of getphiref stays constant, while omega changes, because we update phiest using our
+            #computed controlaction (but we do not update d)
             phiref = self.getphiref(self.dist)
-            self.omega = self.getomega(phiref,self.phiist,dt)
+            omega = self.getomega(phiref,dt)
             
 
             #def. motor commands that will be published
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = self.vref - self.L * self.omega
-            car_cmd_msg.vel_right = self.vref + self.L * self.omega
+            car_cmd_msg.vel_left = self.vref - 0.5*self.baseline * omega
+            car_cmd_msg.vel_right = self.vref + 0.5*self.baseline * omega
 
             self.pub_wheels_cmd.publish(car_cmd_msg)
 
             #printing messages to verify that program is working correctly 
             #i.ei if dist and tist are always zero, then there is probably no data from the lan_pose
             message1 = self.dist
-            message2 = self.omega
+            message2 = omega
             message3 = self.phiist
             message4 = phiref
             message5 = tnew-t0
