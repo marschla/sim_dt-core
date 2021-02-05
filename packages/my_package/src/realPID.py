@@ -24,7 +24,7 @@ class ControllerNode(DTROS):
         rospy.on_shutdown(self.custom_shutdown)
 
         #sys params
-        self.vref = 0.23    #v_ref defines speed at which the robot moves 
+        self.vref = rospy.get_param("~vref",None)    #v_ref defines speed at which the robot moves 
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.phi = 0.0      #class variable to store current estimate of heading
 
@@ -32,10 +32,16 @@ class ControllerNode(DTROS):
         self.C_i = 0.0       #variable to keep track of integral state
 
         #structural paramters of duckiebot
-        self.baseline = 0.1     #distance between the two wheels
+        self.baseline = rospy.get_param('~baseline', None)     #distance between the two wheels
 
-        self.stamp = 0
-        self.header = 0
+        #Parameters for PID control
+        self.k_p = rospy.get_param('~k_p', None)
+        self.k_i = rospy.get_param('~k_i', None)
+        self.k_d = rospy.get_param('~k_d', None)
+        self.sati = rospy.get_param('~sati', None)
+        self.satd = rospy.get_param('~satd', None)
+        self.omegasat = rospy.get_param('~omegasat', None)
+
 
     #function to reset Integral term, if robot is driving perfectly in lane (+- some tolerance)
     def resetintegral(self,d,phi):
@@ -48,46 +54,38 @@ class ControllerNode(DTROS):
 
     #Using the Laneposeestimation, this function computes controlaction
     def getomega(self,dist,phi,dt):
-        #parameters for PID control
-        k_p = 5.0
-        k_i = 0.75
-        #saturation params
-        sati = 1.0
-        omegasat=5.0
         
         #defining error term for PID contrller
         err = phi
 
         #proportional gain part
-        C_p = k_p*err
+        C_p = self.k_p*err
 
         #integral term (approximate integral)
-        self.C_i += k_i*dt*err
+        self.C_i += self.k_i*dt*err
 
         #uncomment, if integral reset should be allowed
         #self.resetintegral(dist,tist)
         
         #make sure integral term doesnt become too big
-        if self.C_i > sati:
-            self.C_i = sati 
-        if self.C_i < -sati:
-            self.C_i = -sati 
+        if self.C_i > self.sati:
+            self.C_i = self.sati 
+        if self.C_i < -self.sati:
+            self.C_i = -self.sati 
         
         
         #computing control output
         omega = C_p + self.C_i 
         
         #saturation of omega -> making sure it does not become too big
-        if omega>omegasat:
-            omega=omegasat
-        if omega<-omegasat:
-            omega=-omegasat
+        if omega>self.omegasat:
+            omega=self.omegasat
+        if omega<-self.omegasat:
+            omega=-self.omegasat
 
-        #basevelocity, with respect to which ooutput velocity will be computed
-        vref = 0.25
 
         #computed velocity
-        v = np.sqrt(1.0-2*np.abs(dist)+2*(dist)**2)*vref
+        v = np.sqrt(1.0-2*np.abs(dist)+2*(dist)**2)*self.vref
         
         return v,omega
 
@@ -153,7 +151,6 @@ class ControllerNode(DTROS):
     #function updates pose variables, that camera gives us data at higher rate then this code operates at,
     #thus we do not use all incoming data
     def control(self,pose, source):
-        self.header = pose.header
         self.dist = pose.d
         self.phi = pose.phi
      

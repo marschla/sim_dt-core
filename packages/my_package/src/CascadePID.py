@@ -27,42 +27,48 @@ class ControllerNode(DTROS):
         rospy.on_shutdown(self.custom_shutdown)
         
         #def. variables
-        self.vref = 0.23    #v_ref defines speed at which the robot moves 
+        self.vref = rospy.get_param("~vref",None)    #v_ref defines speed at which the robot moves 
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.phiist = 0.0   #class variable to store last estimate of phi from lanefilter
         self.phiest = 0.0   #class variable to store current estimate of heading
         self.C_i = 0        #variable to keep track of integral state
 
         #structural paramters of duckiebot
-        self.baseline = 0.1      #distance between the two wheels
+        self.baseline = rospy.get_param('~baseline', None)      #distance between the two wheels
+
+        #parameters for inner loop
+        self.k_p_i = rospy.get_param('~k_p_i', None)
+        self.k_i_i = rospy.get_param('~k_i_i', None)
+        self.k_d_i = rospy.get_param('~k_d_i', None)
+        self.sati_i = rospy.get_param('~sati_i', None)
+        self.satd_i = rospy.get_param('~satd_i', None)
+        self.omegasat = rospy.get_param('~omegasat', None)
+
+        #parameters for outer loop
+        self.k_p_o = rospy.get_param('~k_p_o', None)
+        self.k_i_o = rospy.get_param('~k_i_o', None)
+        self.k_d_o = rospy.get_param('~k_d_o', None)
+        self.sat_phi = rospy.get_param('~sat_phi', None)
 
 
     #control alg. for inner loop
     #Using the angular offset and computed referene angle, this function returns the control action (ie omega)
     def getomega(self,phiref,dt):
 
-        #PID params for inner loop
-        k_p = 3.8
-        k_i = 0.1
-        k_d = 0.0  #because of input noise, k_d should be kept at zero
-        sati = 1.0
-        satd = 1.0
-        omegasat = 100.0
-
         #errror term for inner loop
         err = self.phiest-phiref
         #proportional term
-        C_p = k_p*err
+        C_p = self.k_p_i*err
         #integral term
-        self.C_i += k_i*dt*err
+        self.C_i += self.k_i_i*dt*err
         #control action
         omega = C_p + self.C_i
 
         #saturation of omega -> making sure it does not become too big
-        if omega>omegasat:
-            omega=omegasat
-        if omega<-omegasat:
-            omega=-omegasat
+        if omega>self.omegasat:
+            omega=self.omegasat
+        if omega<-self.omegasat:
+            omega=-self.omegasat
 
         #Since our innerloop should have a higher freq then the data comming in from LanePose estimation
         #we update the heading measurement
@@ -74,24 +80,17 @@ class ControllerNode(DTROS):
     #using lateral offset, this function returns reference heading for inner loop
     def getphiref(self,dist):
 
-        #PID params for outer loop
-        k_p = 3.0
-        k_i = 0.25
-        #because of noise derivative term should be zero
-        k_d = 0.0
-        sat = np.pi/4.0
-
         #correct sign for controller, because of sign conventions
         err = -dist
 
-        phiref = k_p*err
+        phiref = self.k_p_o*err
 
         #saturation, currently at pi/2 (needs testing if bigger angles needed (especially in tight turns))
         #because too low saturation can lead to too slow reaction to Turns
-        if phiref>sat:
-            phiref=sat
-        if phiref<-sat:
-            phiref=-sat
+        if phiref>self.sat_phi:
+            phiref=self.sat_phi
+        if phiref<-self.sat_phi:
+            phiref=-self.sat_phi
 
         return phiref
 

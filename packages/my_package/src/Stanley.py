@@ -26,33 +26,29 @@ class ControllerNode(DTROS):
         rospy.on_shutdown(self.custom_shutdown)
 
         #sys params
-        self.vref = 0.23    #v_ref defines speed at which the robot moves 
+        self.vref = rospy.get_param("~vref",None)    #v_ref defines speed at which the robot moves 
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.phi = 0.0     #class variable to store current estimate of heading
 
         #structural paramters of duckiebot
-        self.baseline = 0.1     #distance between the two wheels
+        self.baseline = rospy.get_param("~baseline",None)     #distance between the two wheels
 
-        self.stamp = 0
-        self.header = 0
+        #parameters for Stanley control, k_phi sould always be bigger then 1, -> see thesis for more information
+        self.k_d = rospy.get_param("~k_d",None)
+        self.k_phi = rospy.get_param("~k_phi",None)
+        self.omegasat = rospy.get_param("~omegasat",None)
+
 
     #compute controlaction based on Stanley Controller theory
     def getomega(self,dist,phi):
-        #parameters for Stanley control, k_phi sould always be bigger then 1, -> see thesis for more information
-        omegasat = 4.5
-        k_d = 10.0
-        k_phi = 5.0
-        
-        rospy.loginfo("phi = %s" % phi)
-        rospy.loginfo("arctan = %s" % np.arctan2(k_d*dist,self.vref))
 
-        omega = k_phi*phi + np.arctan2(k_d*dist,self.vref)
+        omega = self.k_phi*phi + np.arctan2(self.k_d*dist,self.vref)
         
         #saturation of omega -> making sure it does not become too big
-        if omega>omegasat:
-            omega=omegasat
-        if omega<-omegasat:
-            omega=-omegasat
+        if omega>self.omegasat:
+            omega=self.omegasat
+        if omega<-self.omegasat:
+            omega=-self.omegasat
         
         return omega
 
@@ -72,7 +68,7 @@ class ControllerNode(DTROS):
             #car_cmd_msg.header = self.header
 
             #print warning, if omega reaches saturated state
-            if np.abs(self.omega) >= 4.5:
+            if np.abs(omega) >= self.omegasat:
                 rospy.logwarn("Max Omega reached")
 
             #def. motor commands that will be published
@@ -87,7 +83,6 @@ class ControllerNode(DTROS):
             message1 = self.dist
             message2 = omega
             message3 = self.phi
-            message4 = dt
 
             #rospy.loginfo('d: %s' % message1)
             rospy.loginfo('omega: %s' % message2)
@@ -111,7 +106,6 @@ class ControllerNode(DTROS):
     #function updates pose variables, that camera gives us data at higher rate then this code operates at,
     #thus we do not use all incoming data
     def control(self,pose, source):
-        self.header = pose.header
         self.dist = pose.d
         self.phi = pose.phi    
 

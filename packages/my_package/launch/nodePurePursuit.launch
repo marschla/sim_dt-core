@@ -4,7 +4,8 @@
 	<arg name="ai_trafo_mode" default="cb" doc="'cb' for colo balance only; 'both' for color balance and linear trafo"/>
 	<arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
 	<arg name="verbose" default="false"/>
-	<arg name="demo_name" value="Test"/>
+	<arg name="demo_name" value="Lane_following_Marco"/>
+	<arg name="node_name" default="$(env NODENAME)"/>
 
 	<!-- start basic args --> 
 	<!-- Note that we use Niki's master file, which replaced lane control with PP -->
@@ -29,6 +30,15 @@
 	</include>
 
     <!-- include the lane following node -->
-	<node pkg="my_package" type="pure_pursuit.py" name="pure_pursuit" output="screen" required="true"></node>
+
+	<group ns="$(arg veh)">
+
+		<remap from="$(arg node_name)/segments_in" to="ground_projection_node/lineseglist_out"/>
+		<remap from="$(arg node_name)/cmd" to="wheels_driver_node/wheels_cmd"/>	
+
+		<node pkg="my_package" type="$(arg node_name).py" name="$(arg node_name)" output="screen" required="true">
+			<rosparam command="load" file="$(find my_package)/config/$(arg node_name)/default.yaml"/>
+		</node>
+	</group>
 
 </launch>

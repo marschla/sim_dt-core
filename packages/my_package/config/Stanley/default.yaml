@@ -1,0 +1,12 @@
+#structural parameter
+baseline: 0.1
+
+#Controller parameters
+k_d: 10.0
+k_phi: 5.0
+omegasat: 4.5
+
+#base speed
+vref: 0.23
+
+

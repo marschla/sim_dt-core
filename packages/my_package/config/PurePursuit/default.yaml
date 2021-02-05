@@ -1,0 +1,11 @@
+#structural parameter
+baseline: 0.1
+
+#Controller parameter
+lookahead: 0.25
+tolerance: 0.1
+
+#base speed
+vref: 0.23
+
+

@@ -15,21 +15,23 @@ class ControllerNode(DTROS):
         super(ControllerNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
 
         self.vref = 0.0
-        self.baseline = 0.1
+        self.baseline = rospy.get_param('~baseline', None) #distance between the two wheels
         self.omega = 0.0
         self.tnew = 0.0
 
-        self.dist = 0.0
-        self.phi = 0.0
+        self.lookahead = rospy.get_param('~lookahead', None)    #parameter at which mean distance the controller looks for segments
+        self.tol = rospy.get_param('~tolerance', None)          #the range in which the controller looks for segments
 
         # Subscriptions
         #subscribe to the node publishing the detected color segments
-        self.sub_seg = rospy.Subscriber("fakebot/ground_projection_node/lineseglist_out", SegmentList, self.process_segments, queue_size=1)
-        
+        #self.sub_seg = rospy.Subscriber("fakebot/ground_projection_node/lineseglist_out", SegmentList, self.process_segments, queue_size=1)
+        self.sub_seg = rospy.Subscriber("~segments_in", SegmentList, self.process_segments, queue_size=1)
+
         #self.sub_pose = rospy.Subscriber(str(os.environ['VEHICLE_NAME'])+"/lane_filter_node/lane_pose", LanePose ,self.updatepose ,queue_size = 1)
         # Publication
         #Publishes actuator commands to node handling the wheel commands
-        self.pub_wheels_cmd = rospy.Publisher("fakebot/wheels_driver_node/wheels_cmd", WheelsCmdStamped, queue_size=1,dt_topic_type=TopicType.CONTROL)
+        #self.pub_wheels_cmd = rospy.Publisher("fakebot/wheels_driver_node/wheels_cmd", WheelsCmdStamped, queue_size=1,dt_topic_type=TopicType.CONTROL)
+        self.pub_wheels_cmd = rospy.Publisher("~cmd", WheelsCmdStamped, queue_size=1,dt_topic_type=TopicType.CONTROL)
 
         # Stop on shutdown
         rospy.on_shutdown(self.custom_shutdown)
@@ -49,11 +51,7 @@ class ControllerNode(DTROS):
 
     #every time a segmentlist is received, this function is executed
     def process_segments(self, input_segment_list):
-        all_segments = input_segment_list.segments # this is a list of type Segment
-
-        #function params
-        lookahead = 0.25    #parameter at which mean distance the controller looks for segments
-        tol = 0.1           #the range in which the controller looks for segments
+        all_segments = input_segment_list.segments # this is a list of type Segment         
 
         num_yellow = 0      #amount of yellow segments in range
         num_white = 0       #amount of white segments in range     
@@ -90,7 +88,7 @@ class ControllerNode(DTROS):
                 yellow_arr_total += np.array([ave_point_x,ave_point_y])
 
                 #if segment in range, keep track of it for control output
-                if d < lookahead + tol and d > lookahead - tol:
+                if d < self.lookahead + self.tol and d > self.lookahead - self.tol:
                     num_yellow += 1
                     yellow_arr += np.array([ave_point_x,ave_point_y])
 
@@ -102,7 +100,7 @@ class ControllerNode(DTROS):
                 white_arr_total += np.array([ave_point_x,ave_point_y])
 
                 #if segment in range, keep track of it for control output
-                if d < lookahead + tol and d > lookahead - tol: #and ave_point_y > -0.1:
+                if d < self.lookahead + self.tol and d > self.lookahead - self.tol: #and ave_point_y > -0.1:
                     num_white += 1
                     white_arr += np.array([ave_point_x,ave_point_y])
 
@@ -201,7 +199,7 @@ class ControllerNode(DTROS):
             #d = np.sqrt(ave_point[0]**2 + ave_point[1]**2)
 
             #compute actuator output
-            self.omega = 4.8*self.vref* np.sin(alpha)/lookahead
+            self.omega = 4.8*self.vref* np.sin(alpha)/self.lookahead
 
             rospy.loginfo("target: %s" % ave_point)
             #rospy.loginfo("dist to target: %s" % d)

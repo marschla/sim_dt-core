@@ -28,45 +28,43 @@ class ControllerNode(DTROS):
         #sys params
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.phi = 0.0      #class variable to store last estimate of phi from lanefilter
-        self.baseline = 0.1     #distance between the two wheels
+        self.baseline = rospy.get_param('~baseline', None)    #distance between the two wheels
 
-        self.stamp = 0
-        self.header = 0
+        #tuning parameters
+        self.L = rospy.get_param('~L', None)               #offset param, at which point ahead of A the LanePose is applied to
+        self.lookahead = rospy.get_param('~lookahead', None)    #lookahead distance to obtain phiref
+        self.vref = rospy.get_param('~vref', None)
+        self.omegasat = rospy.get_param('~omegasat', None)
+        self.phirefsat = rospy.get_param('~phirefsat', None)
+        self.tol = rospy.get_param('~tolerance', None)       #tolerance param, of DB is closer to the centerline as the tolerance, omega as automatically set to zero
 
     #using LanePose estimation, this function computes controlaction
-    def getomega(self,dist,phi):
-        #tuning parameters
-        L = 0.05            #offset param, at which point ahead of A the LanePose is applied to
-        lookahead = 0.15    #lookahead distance to obtain phiref
-        vref  = 0.23        
-        omegasat = 5.0
-        phirefsat = np.pi/3
-        tol = 0.00          #tolerance param, of DB is closer to the centerline as the tolerance, omega as automatically set to zero
+    def getomega(self,dist,phi):     
         
         #computing phiref according to theory
-        phiref = np.arctan2(dist,lookahead)
+        phiref = np.arctan2(dist,self.lookahead)
 
         #saturation for phiref
-        if phiref > phirefsat:
-            phiref = phirefsat
-        if phiref < -phirefsat:
-            phiref = -phirefsat
+        if phiref > self.phirefsat:
+            phiref = self.phirefsat
+        if phiref < -self.phirefsat:
+            phiref = -self.phirefsat
 
         #This part sets omega to zero, if DB is in a certain bound close to the centerline
-        if np.abs(dist) > tol:
-            omega = vref / L * np.sin(phiref - phi)
-            v = vref * np.cos(phiref - phi)
+        if np.abs(dist) > self.tol:
+            omega = self.vref / self.L * np.sin(phiref - phi)
+            v = self.vref * np.cos(phiref - phi)
         else:
             omega = 0.0 
-            v  = vref
+            v  = self.vref
 
         rospy.loginfo("phiref = %s" % phiref)
         
         #saturation of omega -> making sure it does not become too big
-        if omega>omegasat:
-            omega=omegasat
-        if omega<-omegasat:
-            omega=-omegasat
+        if omega>self.omegasat:
+            omega=self.omegasat
+        if omega<-self.omegasat:
+            omega=-self.omegasat
         
         return v,omega
 
@@ -118,7 +116,6 @@ class ControllerNode(DTROS):
     #function updates pose variables, that camera gives us data at higher rate then this code operates at,
     #thus we do not use all incoming data
     def control(self,pose, source):
-        self.header = pose.header
         self.dist = pose.d
         self.phi = pose.phi
         #delay = rospy.Time.now() - pose.header.stamp
