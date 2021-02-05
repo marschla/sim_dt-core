@@ -28,8 +28,7 @@ class ControllerNode(DTROS):
         rospy.on_shutdown(self.custom_shutdown)
 
         #sys params
-        self.omega_old = 0.0
-        self.vref = 0.23    #v_ref defines speed at which the robot moves 
+        self.omega_old = 0.0   
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.dold = 0.0     #stores error from previous timestep for derivative term
         self.phi = 0.0     #class variable to store current estimate of heading
@@ -37,10 +36,28 @@ class ControllerNode(DTROS):
         #params used for PID control 
         self.C_i = 0.0      #class variable, to store integralstate
 
-        self.baseline = 0.1     #distance between the two wheels
+        #loading params from yaml file
 
-        self.stamp = 0
-        self.header = 0
+        #self.baseline = 0.1     #distance between the two wheels
+        self.baseline = rospy.get_param('~baseline', None)  #distance between the two wheels
+
+        #weighting parameters should chosen such that weight_d + weight_phi = 1
+        #and weight_d/weight_phi < pi/(2*d_max), where d_max should approx be the lanewidth*safetycoefficient (i.e. 1.2*lanewidth)
+        self.weight_d = rospy.get_param('~weight_d', None)
+        self.weight_phi = rospy.get_param('~weight_phi', None)
+
+        #parameters for PID controller
+        self.k_p = rospy.get_param("~k_p",None)
+        self.k_i = rospy.get_param("~k_i",None)
+        self.k_d = rospy.get_param("~k_d",None)
+        #saturation parameters
+        self.sati = rospy.get_param("~sati",None)
+        self.satd = rospy.get_param("~satd",None)
+        self.omegasat = rospy.get_param("~omegasat",None)
+
+        self.vref = rospy.get_param("~vref",None)   #v_ref defines speed at which the robot moves 
+
+
 
     #function to reset Integralstate, if robot is thought to be perfectly in Lane (d=phi=0)
     def resetintegral(self,d,phi):
@@ -67,28 +84,15 @@ class ControllerNode(DTROS):
 
     #compute controlaction based on lanepose estimate
     def getcontrolaction(self,dist,phi,dt):
-        #parameters for PID control
-        k_p = 33.0
-        k_i = 5.0
-        k_d = 0.0
-        #saturation params
-        sati = 1.0
-        satd = 1.0
-        omegasat=4.5
-
-        #weighting parameters should chosen such that weight_d + weight_phi = 1
-        #and weight_d/weight_phi < pi/(2*d_max), where d_max should approx be the lanewidth*safetycoefficient (i.e. 1.2*lanewidth)
-        weight_d = 0.8
-        weight_phi = 0.2
         
         #compute error for PID
-        err = weight_d*dist+weight_phi*phi
+        err = self.weight_d*dist+self.weight_phi*phi
 
         #proportional gain part
-        C_p = k_p*err
+        C_p = self.k_p*err
 
         #integral term (approximate integral)
-        self.C_i += k_i*dt*err
+        self.C_i += self.k_i*dt*err
 
         #activate if integralreset is desired:
         #sets integralterm C_i to zero if d and theta are zero, thus the DB is driving perfectly in lane
@@ -96,21 +100,21 @@ class ControllerNode(DTROS):
 
         #integral saturation
         #make sure integral term doesnt become too big
-        if self.C_i > sati:
-            self.C_i = sati 
-        if self.C_i < -sati:
-            self.C_i = -sati 
+        if self.C_i > self.sati:
+            self.C_i = self.sati 
+        if self.C_i < -self.sati:
+            self.C_i = -self.sati 
         
         #derivative term (usually not used, because noise makes it rather unstable)
-        C_d = k_d*(err-self.dold)/dt
+        C_d = self.k_d*(err-self.dold)/dt
         self.dold = err
         
         #derivative saturation
         #make sure derivative term doesnt become too big
-        if C_d > satd:
-            C_d = satd
-        if C_d < -satd:
-            C_d = -satd
+        if C_d > self.satd:
+            C_d = self.satd
+        if C_d < -self.satd:
+            C_d = -self.satd
         
         #computing control output
         omega = C_p + self.C_i + C_d
@@ -119,15 +123,14 @@ class ControllerNode(DTROS):
         #making sure, that too large of actuator output is requested, 
         #since a) the real life motors cannot achieve any arbitrary speed 
         #and b) too big of omega could make the robot crash, since there is a delay in the measurements
-        if omega>omegasat:
-            omega=omegasat
-        if omega<-omegasat:
-            omega=-omegasat
+        if omega>self.omegasat:
+            omega=self.omegasat
+        if omega<-self.omegasat:
+            omega=-self.omegasat
 
         #uncomment the following part to allow change in velocity based on distance to lane center  and
         #heading direction (heading towards lane center -> drive faster, heading away -> drive slower)
         #if robot is almost perfectly in lane -> drive faster 
-        vref = 0.23
         '''
         if np.abs(omega) < 0.05 and np.abs(self.omega_old) < 0.05:
             v = 0.3
@@ -138,7 +141,7 @@ class ControllerNode(DTROS):
         
         self.omega_old = omega
         '''
-        v = vref
+        v = self.vref
         return v,omega
 
     def run(self):
@@ -169,10 +172,9 @@ class ControllerNode(DTROS):
 
             #car_cmd_msg.omega = self.omega
             #car_cmd_msg.v = self.vref
-            #car_cmd_msg.header = self.header
 
             #console output, if requested actuatoroutput saturates
-            if np.abs(omega) >= 4.5:
+            if np.abs(omega) >= self.omegasat:
                 rospy.logwarn("Max Omega reached")
 
             #def. motor commands that will be published
@@ -211,7 +213,6 @@ class ControllerNode(DTROS):
     #function updates pose variables, that camera gives us data at higher rate then this code operates at,
     #thus we do not use all incoming data
     def control(self,pose, source):
-        self.header = pose.header
         self.dist = pose.d 
         self.phi = pose.phi 
 

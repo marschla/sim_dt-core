@@ -198,10 +198,13 @@ class ControllerNode(DTROS):
             #and direct path to the computed targetpoint
             alpha = np.arctan2(ave_point[1],ave_point[0])
 
+            #d = np.sqrt(ave_point[0]**2 + ave_point[1]**2)
+
             #compute actuator output
             self.omega = 4.8*self.vref* np.sin(alpha)/lookahead
 
             rospy.loginfo("target: %s" % ave_point)
+            #rospy.loginfo("dist to target: %s" % d)
            
 
     
