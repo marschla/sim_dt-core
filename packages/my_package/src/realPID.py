@@ -85,7 +85,8 @@ class ControllerNode(DTROS):
 
 
         #computed velocity
-        v = np.sqrt(1.0-2*np.abs(dist)+2*(dist)**2)*self.vref
+        #v = np.sqrt(1.0-2*np.abs(dist)+2*(dist)**2)*self.vref
+        v=self.vref
         
         return v,omega
 

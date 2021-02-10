@@ -153,6 +153,9 @@ class ControllerNode(DTROS):
         stoptime = 28.0
         t0 = time.time()
         i=0
+
+        parammsg1 = [self.k_p,self.k_i,self.k_d]
+        rospy.loginfo("[kp,ki,kd] = %s" % parammsg1)
         
         while  not rospy.is_shutdown():
             #computing dt for I-part of controller

@@ -50,6 +50,8 @@ class ControllerNode(DTROS):
         if phiref < -self.phirefsat:
             phiref = -self.phirefsat
 
+        '''
+        #outdated
         #This part sets omega to zero, if DB is in a certain bound close to the centerline
         if np.abs(dist) > self.tol:
             omega = self.vref / self.L * np.sin(phiref - phi)
@@ -57,8 +59,21 @@ class ControllerNode(DTROS):
         else:
             omega = 0.0 
             v  = self.vref
+        '''
 
         rospy.loginfo("phiref = %s" % phiref)
+
+
+        #computing control action following the GotoAngle control architecture (see Thesis for more information)
+        if phiref - phi > np.pi/2.0:
+            omega = self.omegasat
+            v=0.0
+        elif phiref - phi < -np.pi/2.0:
+            omega = -self.omegasat
+            v=0.0
+        else:
+            omega = self.vref / self.L * np.sin(phiref - phi)
+            v = self.vref * np.cos(phiref - phi)
         
         #saturation of omega -> making sure it does not become too big
         if omega>self.omegasat:
