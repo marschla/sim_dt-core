@@ -164,7 +164,7 @@ class ControllerNode(DTROS):
             ave_yellow = yellow_arr * 1. / num_yellow
 
             #offset to the right, to get robot back in lane
-            offset = -0.15
+            offset = -0.3
             ave_point = ave_yellow + np.array([0.0,offset])
 
             #smaller velocity, since robot is not optimaly in lane
@@ -178,7 +178,7 @@ class ControllerNode(DTROS):
             ave_white = white_arr * 1. / num_white
 
             #offset to the left, to get robot back in lane
-            offset = 0.35
+            offset = 0.3
 
             #if robot is in a tight turn, this statement usually true, giving a bigger offset to get a higher 
             #rotational velocity, to get the turn more smoothely
@@ -199,7 +199,7 @@ class ControllerNode(DTROS):
             #d = np.sqrt(ave_point[0]**2 + ave_point[1]**2)
 
             #compute actuator output
-            self.omega = 4.8*self.vref* np.sin(alpha)/self.lookahead
+            self.omega = 2.0*self.vref* np.sin(alpha)/self.lookahead #4.8*self.vref* np.sin(alpha)/self.lookahead
 
             rospy.loginfo("target: %s" % ave_point)
             #rospy.loginfo("dist to target: %s" % d)
