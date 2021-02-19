@@ -5,7 +5,7 @@ baseline: 0.1
 L: 0.05
 lookahead: 0.12
 omegasat: 4.6
-phirefsat: 1.5 #~pi/2
+phirefsat: 1.6 #~pi/2
 tolerance: 0.0
 
 #base speed

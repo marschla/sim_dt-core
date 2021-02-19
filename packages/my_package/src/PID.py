@@ -55,8 +55,8 @@ class ControllerNode(DTROS):
         self.satd = rospy.get_param("~satd",None)
         self.omegasat = rospy.get_param("~omegasat",None)
 
-        self.vref = rospy.get_param("~vref",None)   #v_ref defines speed at which the robot moves 
-
+        #self.vref = rospy.get_param("~vref",None)   #v_ref defines speed at which the robot moves 
+        self.vref = float(os.environ['SPEED'])
 
 
     #function to reset Integralstate, if robot is thought to be perfectly in Lane (d=phi=0)
@@ -141,6 +141,7 @@ class ControllerNode(DTROS):
         
         self.omega_old = omega
         '''
+
         v = self.vref
         return v,omega
 

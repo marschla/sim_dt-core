@@ -14,7 +14,8 @@ class ControllerNode(DTROS):
 
         super(ControllerNode, self).__init__(node_name=node_name,node_type=NodeType.PERCEPTION)
 
-        self.vref = 0.0
+        self.vref = float(os.environ['SPEED'])
+        self.v = 0.0
         self.baseline = rospy.get_param('~baseline', None) #distance between the two wheels
         self.omega = 0.0
         self.tnew = 0.0
@@ -35,6 +36,8 @@ class ControllerNode(DTROS):
 
         # Stop on shutdown
         rospy.on_shutdown(self.custom_shutdown)
+
+        self.lastomega = 0.0
 
 
 
@@ -93,7 +96,7 @@ class ControllerNode(DTROS):
                     yellow_arr += np.array([ave_point_x,ave_point_y])
 
             #if the detected segment is white
-            if segment.color == 0 and ave_point_y < 0.1 and ave_point_y > -0.15:    
+            if segment.color == 0 and ave_point_y < 0.05: #and ave_point_y < 0.05 and ave_point_y > -0.25:    
                 
                 #add segment information to params
                 num_white_total += 1
@@ -103,9 +106,10 @@ class ControllerNode(DTROS):
                 if d < self.lookahead + self.tol and d > self.lookahead - self.tol: #and ave_point_y > -0.1:
                     num_white += 1
                     white_arr += np.array([ave_point_x,ave_point_y])
+                    #rospy.loginfo(ave_point_y)
 
         #if both yellow and white segments are detected
-        if num_white != 0 and num_yellow != 0:
+        if num_white >= 5 and num_yellow != 0:
 
             #compute average of all detected segments (per color)
             ave_white = white_arr * 1. / num_white
@@ -115,7 +119,7 @@ class ControllerNode(DTROS):
             ave_point = (ave_white + ave_yellow)/2.0
 
             #set higher velocity if both segments are detected, (which means, that the robot is likely to be near the center of the lane)
-            self.vref = 0.23
+            self.v = self.vref
 
             '''
             if np.abs(ave_point[1]) < 0.025:
@@ -127,11 +131,13 @@ class ControllerNode(DTROS):
         #either the robot crashed (outside of lane)
         #or lighting conditions are too bad, thus the segments (while in frame) are not detected (correctly)
         #or the parameters are not chosen correct
-        if num_white == 0 and num_yellow == 0:
+        if num_white < 5 and num_yellow == 0:
             #no white/yellow segments detected 
             #turn on the spot, until segments are detected
-            self.vref = 0.0
+            #self.v = 0.5*self.vref
+            #self.omega = self.lastomega
             self.omega = 2.5
+            self.v = 0.0
 
             '''
             if white_arr_total[1] < 0 and yellow_arr_total[1] > 0:
@@ -157,9 +163,9 @@ class ControllerNode(DTROS):
 
             flag = False
 
-        #if only yellow segment are detected, meaning, that the robot is likely to be too far to the left
+        #if only150 yellow segment are detected, meaning, that the robot is likely to be too far to the left
         # -> turn right: take average of yellow segments + some offset towards to the center of the lane
-        if num_white == 0 and num_yellow != 0:
+        if num_white < 5 and num_yellow != 0:
 
             ave_yellow = yellow_arr * 1. / num_yellow
 
@@ -168,11 +174,11 @@ class ControllerNode(DTROS):
             ave_point = ave_yellow + np.array([0.0,offset])
 
             #smaller velocity, since robot is not optimaly in lane
-            self.vref = 0.20
+            self.v = self.vref*0.85
 
         #if only white segment are detected, meaning, that the robot is likely to be too far to the right
         # -> turn left: take average of white segments + some offset towards to the center of the lane        
-        if num_yellow == 0 and num_white != 0:
+        if num_yellow == 0 and num_white >= 5:
             #only white segments (probably too far to the right of the lane)
 
             ave_white = white_arr * 1. / num_white
@@ -188,7 +194,7 @@ class ControllerNode(DTROS):
             ave_point = ave_white + np.array([0.0,offset])
 
             #smaller velocity, since robot is not optimaly in lane
-            self.vref = 0.20
+            self.v = self.vref*0.85
 
         #executed if yellow/white segments are detected in range
         if flag == True:
@@ -199,9 +205,9 @@ class ControllerNode(DTROS):
             #d = np.sqrt(ave_point[0]**2 + ave_point[1]**2)
 
             #compute actuator output
-            self.omega = 2.0*self.vref* np.sin(alpha)/self.lookahead #4.8*self.vref* np.sin(alpha)/self.lookahead
+            self.omega = 2.0*self.v* np.sin(alpha)/self.lookahead #4.8*self.vref* np.sin(alpha)/self.lookahead
 
-            rospy.loginfo("target: %s" % ave_point)
+            #rospy.loginfo("target: %s" % ave_point)
             #rospy.loginfo("dist to target: %s" % d)
            
 
@@ -212,12 +218,15 @@ class ControllerNode(DTROS):
             car_cmd_msg = WheelsCmdStamped()
 
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = self.vref - 0.5*self.baseline * self.omega
-            car_cmd_msg.vel_right = self.vref + 0.5*self.baseline * self.omega
+            car_cmd_msg.vel_left = self.v - 0.5*self.baseline * self.omega
+            car_cmd_msg.vel_right = self.v + 0.5*self.baseline * self.omega
+
+            self.lastomega = self.omega
 
             # Send the command to the car
             self.pub_wheels_cmd.publish(car_cmd_msg)
             rospy.loginfo("omega = %s" % self.omega)
+            rospy.loginfo("v = %s" % self.v)
             
             rate.sleep()
 

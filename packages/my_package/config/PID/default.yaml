@@ -6,12 +6,12 @@ weight_d: 0.8
 weight_phi: 0.2
 
 #PID controller params
-k_p: 4.0 #80.0
-k_i: 1.0 #5.0
+k_p: 35.0
+k_i: 5.0 
 k_d: 0.0
 sati: 1.0
 satd: 1.0
-omegasat: 5.0
+omegasat: 4.5
 
 #base speed
 vref: 0.23

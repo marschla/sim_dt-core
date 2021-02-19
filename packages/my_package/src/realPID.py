@@ -24,7 +24,8 @@ class ControllerNode(DTROS):
         rospy.on_shutdown(self.custom_shutdown)
 
         #sys params
-        self.vref = rospy.get_param("~vref",None)    #v_ref defines speed at which the robot moves 
+        #self.vref = rospy.get_param("~vref",None)    #v_ref defines speed at which the robot moves 
+        self.vref = float(os.environ['SPEED'])
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.phi = 0.0      #class variable to store current estimate of heading
 
