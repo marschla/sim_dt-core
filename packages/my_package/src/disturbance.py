@@ -34,6 +34,10 @@ class MyPublisherNode(DTROS):
         pose_msg.d = msg.d + offset_d
         pose_msg.phi = msg.phi + offset_phi
 
+        
+
+        rospy.sleep(0.2)
+
         self.pub_actuator_cmd.publish(pose_msg)
 
 

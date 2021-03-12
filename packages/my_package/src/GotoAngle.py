@@ -33,7 +33,8 @@ class ControllerNode(DTROS):
         #tuning parameters
         self.L = rospy.get_param('~L', None)               #offset param, at which point ahead of A the LanePose is applied to
         self.lookahead = rospy.get_param('~lookahead', None)    #lookahead distance to obtain phiref
-        self.vref = rospy.get_param('~vref', None)
+        #self.vref = rospy.get_param('~vref', None)
+        self.vref = float(os.environ['SPEED'])
         self.omegasat = rospy.get_param('~omegasat', None)
         self.phirefsat = rospy.get_param('~phirefsat', None)
         self.tol = rospy.get_param('~tolerance', None)       #tolerance param, of DB is closer to the centerline as the tolerance, omega as automatically set to zero

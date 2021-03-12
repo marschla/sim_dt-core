@@ -133,6 +133,8 @@ class GroundProjectionNode(DTROS):
                 new_segment.color = received_segment.color
                 # TODO what about normal and points
                 seglist_out.segments.append(new_segment)
+
+            rospy.sleep(0.15)
             self.pub_lineseglist.publish(seglist_out)
 
             if not self.first_processing_done:

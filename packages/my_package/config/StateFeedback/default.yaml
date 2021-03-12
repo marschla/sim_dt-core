@@ -1,17 +1,18 @@
+ 
 #structural parameter
 baseline: 0.1
 
 #Controller parameters
 integral_state_enable: True
-omegasat: 4.5
+omegasat: 4.0
 k1_n: 10.5
 k2_n: -4.25
-k1_i: 7.0
-k2_i: -3.25
-k3_i: 1.1
+k1_i: 20.0
+k2_i: 5.0
+k3_i: 0.9
 sati: 1.0
 
 #base speed
-vref: 0.23
+vref: 0.20
 
 

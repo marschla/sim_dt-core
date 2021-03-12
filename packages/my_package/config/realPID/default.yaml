@@ -2,14 +2,14 @@
 baseline: 0.1
 
 #PID controller params
-k_p: 5.0
-k_i: 0.75
+k_p: 3.8
+k_i: 0.05
 k_d: 0.0
 sati: 1.0
 satd: 1.0
-omegasat: 4.5
+omegasat: 4.0
 
 #base speed
-vref: 0.23
+vref: 0.2
 
 

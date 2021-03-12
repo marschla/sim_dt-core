@@ -1,14 +1,13 @@
+ 
 #structural parameter
 baseline: 0.1
 
 #Controller parameters
 L: 0.05
-lookahead: 0.12
-omegasat: 4.6
+lookahead: 0.15
+omegasat: 4.0
 phirefsat: 1.6 #~pi/2
 tolerance: 0.0
 
 #base speed
-vref: 0.23
-
-
+vref: 0.2

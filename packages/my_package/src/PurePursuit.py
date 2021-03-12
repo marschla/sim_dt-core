@@ -54,7 +54,11 @@ class ControllerNode(DTROS):
 
     #every time a segmentlist is received, this function is executed
     def process_segments(self, input_segment_list):
-        all_segments = input_segment_list.segments # this is a list of type Segment         
+        all_segments = input_segment_list.segments # this is a list of type Segment  
+
+        delay = rospy.Time.now() - input_segment_list.header.stamp
+        delay_float = delay.secs + float(delay.nsecs)/1e9    
+        rospy.loginfo('delay [s] =  %s' % delay_float)         
 
         num_yellow = 0      #amount of yellow segments in range
         num_white = 0       #amount of white segments in range     

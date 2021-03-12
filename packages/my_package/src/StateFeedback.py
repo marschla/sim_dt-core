@@ -23,7 +23,8 @@ class MyNode(DTROS):
         #shutdown procedure
         rospy.on_shutdown(self.custom_shutdown)
         #def. variables
-        self.vref = rospy.get_param('~vref', None)    #vref defines speed at which the robot moves 
+        #self.vref = rospy.get_param('~vref', None)    #vref defines speed at which the robot moves 
+        self.vref = float(os.environ['SPEED'])
         self.dist = 0.0     #class variable to store distance do lanecenter
         self.phi = 0.0      #class variable to store current estimate of heading
         self.dint = 0.0     #class variable for integral state (of distance to lane center)
@@ -102,13 +103,13 @@ class MyNode(DTROS):
             
             #def. motor commands that will be published
             car_cmd_msg.header.stamp = rospy.get_rostime()
-            car_cmd_msg.vel_left = v - 0.5*self.baseline * omega
-            car_cmd_msg.vel_right = v + 0.5*self.baseline * omega
+            car_cmd_msg.vel_left = v + 0.5*self.baseline * omega
+            car_cmd_msg.vel_right = v - 0.5*self.baseline * omega
 
             self.pub_wheels_cmd.publish(car_cmd_msg)
 
 
-            rospy.loginfo('d: %s' % self.dint)
+            rospy.loginfo('d: %s' % self.dist)
             rospy.loginfo('phi: %s' % self.phi)
             rospy.loginfo('omega: %s' % omega)
             rate.sleep()
@@ -127,7 +128,7 @@ class MyNode(DTROS):
     #function updates pose variables, that camera gives us data at higher rate then this code operates at,
     #thus we do not use all incoming data
     def control(self,pose,source):
-        self.dist = -pose.d
+        self.dist = pose.d
         self.phi = pose.phi
 
 
