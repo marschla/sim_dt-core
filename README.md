@@ -3,11 +3,8 @@
 Contains Duckietown Controllers for simulator.
 
 Usual procedure to run the simulator:
-1) start the sim-wrapper 
-```shell script
- docker run -it --rm --net=host -v /PATH_TO_CALI_FILE:/data -e duckietown/sim-wrapper:v2-amd64
-```
-	
+1) start the sim-wrapper found here: https://github.com/marschla/sim-wrapper
+
 2) start the controllernode inside this repo:
 	docker run -it --rm --net=host -v /PATH_TO_CALI_FILE:/data -e SCALE=X -e NODENAME=CONTROLLER 
 	duckietown/sim_dt-core:main-amd64
