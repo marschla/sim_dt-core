@@ -10,7 +10,7 @@ Usual procedure to run the simulator:
  docker run -it --rm --net=host -v /PATH_TO_CALI_FILE:/data -e SCALE=X -e NODENAME=CONTROLLER 
 	duckietown/sim_dt-core:main-amd64
 ```
-   Where X regulates how strong the magnitude of the disturbance is and CONTROLLER specifies the name of the Controller.
+   Where X regulates how strong the magnitude of the disturbance is and CONTROLLER specifies the control architecture.
 
 3) run dt start_gui_tools fakebot then rqt_image_view to see the simulated camerafeed
 
